@@ -925,3 +925,39 @@ export async function fetchVaultData(vaultAddress: Address): Promise<Account | n
 		return null;
 	}
 }
+
+// Function to compound all vaults for an account
+export async function compoundAllVaults() {
+	try {
+		const client = get(walletClient);
+		const address = get(walletAddress);
+		const chain = get(currentChain);
+		
+		if (!client || !address) {
+			throw new Error('Wallet not connected');
+		}
+		
+		console.log(`Updating all vaults for account: ${address} on chain: ${chain.name} (${chain.id})`);
+		
+		// Call updateAccount on the staking manager with the account address as an argument
+		const hash = await client.writeContract({
+			chain: statusNetworkTestnet, // Use Status Network Testnet explicitly
+			account: address,
+			address: STAKING_MANAGER.address,
+			abi: stakingManagerAbi,
+			functionName: 'updateAccount',
+			args: [address]
+		});
+		
+		console.log('Update account transaction hash:', hash);
+		
+		// Wait for transaction to be mined
+		const receipt = await publicClient.waitForTransactionReceipt({ hash });
+		console.log('Update account receipt:', receipt);
+		
+		return { hash, receipt };
+	} catch (error) {
+		console.error(`Failed to update account ${address}:`, error);
+		throw error;
+	}
+}

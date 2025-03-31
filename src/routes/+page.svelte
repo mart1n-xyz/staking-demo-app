@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { walletAddress, formattedBalance, formattedSntBalance, network, sntError, userVaults, formattedGlobalTotalStaked, fetchTotalStaked, fetchTokenPrice, tokenPriceUsd, globalTotalStaked, vaultAccounts, formattedTotalMpBalance, formattedStakedMpBalance, formattedTotalRewardsBalance, totalRewardsBalance, rewardsBalance, compoundMPs, vaultMpBalances, formattedUncompoundedMpTotal, refreshBalances } from '$lib/viem';
+	import { walletAddress, formattedBalance, formattedSntBalance, network, sntError, userVaults, formattedGlobalTotalStaked, fetchTotalStaked, fetchTokenPrice, tokenPriceUsd, globalTotalStaked, vaultAccounts, formattedTotalMpBalance, formattedStakedMpBalance, formattedTotalRewardsBalance, totalRewardsBalance, rewardsBalance, compoundMPs, compoundAllVaults, vaultMpBalances, formattedUncompoundedMpTotal, refreshBalances } from '$lib/viem';
 	import { SNT_TOKEN } from '$lib/config/contracts';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -22,6 +22,9 @@
 
 	// Track compound transaction states
 	let compoundingVaults: Record<Address, 'idle' | 'loading' | 'success'> = {};
+	
+	// Track compound all transaction state
+	let compoundingAll: 'idle' | 'loading' | 'success' = 'idle';
 	
 	// Initialize compounding state for all vaults
 	$: {
@@ -174,6 +177,34 @@
 		}
 	}
 
+	// Function to handle compounding all vaults
+	async function handleCompoundAll() {
+		try {
+			// Set loading state
+			compoundingAll = 'loading';
+			
+			// Trigger compound all transaction
+			await compoundAllVaults();
+			
+			// Set success state
+			compoundingAll = 'success';
+			
+			// Refresh balances to update UI
+			if ($walletAddress) {
+				await refreshBalances($walletAddress);
+			}
+			
+			// Reset to idle after 3 seconds
+			setTimeout(() => {
+				compoundingAll = 'idle';
+			}, 3000);
+		} catch (error) {
+			console.error("Error compounding all vaults:", error);
+			// Reset to idle state on error
+			compoundingAll = 'idle';
+		}
+	}
+
 	// Fetch data when navigating to overview page
 	$: if ($page.url.pathname === '/') {
 		fetchTotalStaked();
@@ -220,7 +251,44 @@
 
 					<div class="overflow-hidden rounded-xl bg-amber-50 p-6 shadow-sm">
 						<div class="flex flex-col">
-							<h3 class="text-sm font-medium leading-6 text-amber-700">MPs to Compound</h3>
+							<div class="flex items-center justify-between">
+								<h3 class="text-sm font-medium leading-6 text-amber-700">MPs to Compound</h3>
+								<button
+									on:click={handleCompoundAll}
+									class="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 text-amber-700 hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-amber-100"
+									disabled={compoundingAll === 'loading' || $formattedUncompoundedMpTotal === '0.00'}
+									aria-label="Compound all vaults"
+									title="Compound all vaults"
+								>
+									{#if compoundingAll === 'loading'}
+										<!-- Loading spinner -->
+										<svg class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+											<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+											<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+										</svg>
+									{:else if compoundingAll === 'success'}
+										<!-- Success checkmark -->
+										<svg class="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+											<path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+										</svg>
+									{:else}
+										<!-- Default sync icon -->
+										<svg 
+											class="h-4 w-4" 
+											fill="none" 
+											viewBox="0 0 24 24" 
+											stroke-width="1.5" 
+											stroke="currentColor"
+										>
+											<path 
+												stroke-linecap="round" 
+												stroke-linejoin="round" 
+												d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" 
+											/>
+										</svg>
+									{/if}
+								</button>
+							</div>
 							<div class="mt-4 flex items-baseline justify-end gap-x-2">
 								<span class="text-4xl font-bold tracking-tight text-amber-900">
 									{$formattedUncompoundedMpTotal}
@@ -554,8 +622,8 @@
 																stroke-linecap="round" 
 																stroke-linejoin="round" 
 																d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" 
-																/>
-															</svg>
+															/>
+														</svg>
 													{/if}
 												</button>
 											</div>

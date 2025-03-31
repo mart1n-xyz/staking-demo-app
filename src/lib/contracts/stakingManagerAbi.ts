@@ -69,5 +69,12 @@ export const stakingManagerAbi = [
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function'
+  },
+  {
+    inputs: [{ internalType: 'address', name: 'account', type: 'address' }],
+    name: 'updateAccount',
+    outputs: [],
+    stateMutability: 'nonpayable',
+    type: 'function'
   }
 ] as const; 
