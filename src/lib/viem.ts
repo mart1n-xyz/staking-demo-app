@@ -12,6 +12,7 @@ import {
 import { sepolia } from 'viem/chains';
 import { writable, derived, get } from 'svelte/store';
 import { tokenAbi, vaultAbi, stakingManagerAbi, vaultFactoryAbi } from './contracts';
+import { SNT_TOKEN, STAKING_MANAGER, VAULT_FACTORY, KARMA, KARMA_NFT } from './config/contracts';
 
 const rpcUrl = import.meta.env.VITE_RPC_URL;
 
@@ -56,14 +57,6 @@ export const publicClient = createPublicClient({
 	transport: http(statusNetworkTestnet.rpcUrls.default.http[0])
 });
 
-// Token information for Status Network Testnet
-export const SNT_TOKEN = {
-	address: '0x1C3Ac2a186c6149Ae7Cb4D716eBbD0766E4f898a' as Address,
-	name: 'Status Test Token',
-	symbol: 'STT',
-	decimals: 18
-} as const;
-
 // Wallet connection state stores
 export const walletAddress = writable<Address | undefined>(undefined);
 export const walletClient = writable<WalletClient | undefined>(undefined);
@@ -84,24 +77,14 @@ export const formattedSntBalance = derived(sntBalance, ($balance) => {
 	return formatNumberWithSpaces(num);
 });
 
-// Contract addresses for Status Network Testnet
-export const STAKING_MANAGER = {
-	address: '0x785e6c5af58FB26F4a0E43e0cF254af10EaEe0f1' as Address
-} as const;
-
-export const VAULT_FACTORY = {
-	address: '0xf7b6EC76aCa97b395dc48f7A2861aD810B34b52e' as Address
-} as const;
-
 // Add Account type
 type Account = {
 	stakedBalance: bigint;
-	rewardIndex: bigint;
+	lastRewardIndex: bigint;
 	mpAccrued: bigint;
 	maxMP: bigint;
 	lastMPUpdateTime: bigint;
 	lockUntil: bigint;
-	mpStaked: bigint;
 	rewardsAccrued: bigint;
 };
 
@@ -120,7 +103,7 @@ export const totalMpBalance = derived(vaultAccounts, ($accounts) => {
 
 // Add stores for staked and unstaked MP balances
 export const stakedMpBalance = derived(vaultAccounts, ($accounts) => {
-	return Object.values($accounts).reduce((sum, account) => sum + (account.mpStaked || 0n), 0n);
+	return Object.values($accounts).reduce((sum, account) => sum + account.mpAccrued, 0n);
 });
 
 export const unstakedMpBalance = derived(
@@ -782,7 +765,7 @@ export async function fetchAllVaultMpBalances(vaults: readonly Address[]) {
 		
 		for (const vault of vaults) {
 			const mpBalance = balancesMap[vault] || 0n;
-			const mpStaked = accounts[vault]?.mpStaked || 0n;
+			const mpStaked = accounts[vault]?.mpAccrued || 0n;
 			if (mpBalance > mpStaked) {
 				totalUncompounded += (mpBalance - mpStaked);
 			}
@@ -901,30 +884,44 @@ export async function compoundMPs(vaultAddress: Address) {
 			throw new Error('Wallet not connected');
 		}
 		
-		console.log(`Compounding MPs for vault: ${vaultAddress} on chain: ${chain.name} (${chain.id})`);
+		console.log(`Updating vault for vault: ${vaultAddress} on chain: ${chain.name} (${chain.id})`);
 		
-		// Call compound on the staking manager with the vault address as an argument
+		// Call updateVault on the staking manager with the vault address as an argument
 		const hash = await client.writeContract({
 			chain: statusNetworkTestnet, // Use Status Network Testnet explicitly
 			account: address,
 			address: STAKING_MANAGER.address,
 			abi: stakingManagerAbi,
-			functionName: 'compound',
+			functionName: 'updateVault',
 			args: [vaultAddress]
 		});
 		
-		console.log('Compound transaction hash:', hash);
+		console.log('Update vault transaction hash:', hash);
 		
 		// Wait for transaction to be mined
 		const receipt = await publicClient.waitForTransactionReceipt({ hash });
-		console.log('Compound receipt:', receipt);
+		console.log('Update vault receipt:', receipt);
 		
-		// Refresh balances after compounding
-		await refreshBalances(address);
-		
-		return hash;
+		return { hash, receipt };
 	} catch (error) {
-		console.error("Error compounding MPs:", error);
+		console.error(`Failed to update vault ${vaultAddress}:`, error);
 		throw error;
+	}
+}
+
+// Function to fetch vault data
+export async function fetchVaultData(vaultAddress: Address): Promise<Account | null> {
+	try {
+		const data = await publicClient.readContract({
+			address: STAKING_MANAGER.address,
+			abi: stakingManagerAbi,
+			functionName: 'getVault',
+			args: [vaultAddress]
+		}) as Account;
+
+		return data;
+	} catch (error) {
+		console.error(`Failed to fetch vault data for ${vaultAddress}:`, error);
+		return null;
 	}
 }

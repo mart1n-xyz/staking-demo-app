@@ -102,55 +102,49 @@ function setupWalletSubscription(initialWallet: WalletState) {
         walletClient.set(newClient);
       }
       
-      // Refresh balances with new address
+      // Fetch new balances
       await refreshBalances(newAddress);
     }
   });
 }
 
 /**
- * Connect wallet using Web3-Onboard and initialize viem wallet client
+ * Connect wallet using Web3-Onboard
  */
 export async function connectWithOnboard() {
   try {
     isConnecting.set(true);
     
-    // Connect wallet using Web3-Onboard - this will directly open the Web3-Onboard modal
+    // Connect wallet
     const wallets = await onboard.connectWallet();
     
-    if (!wallets || wallets.length === 0) {
-      throw new Error('No wallet connected');
+    if (wallets && wallets.length > 0) {
+      const connectedWallet = wallets[0];
+      
+      if (connectedWallet.provider) {
+        // Get the connected address
+        const address = connectedWallet.accounts[0].address as Address;
+        
+        // Create viem wallet client with the provider from Web3-Onboard
+        const client = createWalletClient({
+          chain: sepolia,
+          transport: custom(connectedWallet.provider)
+        });
+        
+        // Update viem stores
+        walletAddress.set(address);
+        walletClient.set(client);
+        
+        // Store the connected wallet label
+        localStorage.setItem(WALLET_CONNECT_KEY, connectedWallet.label);
+        
+        // Fetch initial balances and data
+        await refreshBalances(address);
+        
+        // Setup wallet change subscription
+        setupWalletSubscription(connectedWallet);
+      }
     }
-    
-    const connectedWallet = wallets[0];
-    
-    if (!connectedWallet.provider) {
-      throw new Error('No provider available');
-    }
-    
-    // Get the connected address
-    const address = connectedWallet.accounts[0].address as Address;
-    
-    // Create viem wallet client with the provider from Web3-Onboard
-    const client = createWalletClient({
-      chain: sepolia,
-      transport: custom(connectedWallet.provider)
-    });
-    
-    // Update viem stores
-    walletAddress.set(address);
-    walletClient.set(client);
-    
-    // Save wallet connection to localStorage
-    localStorage.setItem(WALLET_CONNECT_KEY, connectedWallet.label);
-    
-    // Fetch initial balances and data
-    await refreshBalances(address);
-    
-    // Setup wallet change subscription
-    setupWalletSubscription(connectedWallet);
-    
-    return { address, client };
   } catch (error) {
     console.error('Failed to connect wallet:', error);
     throw error;
@@ -163,16 +157,27 @@ export async function connectWithOnboard() {
  * Disconnect wallet using Web3-Onboard
  */
 export async function disconnectWithOnboard() {
-  const connectedWallets = onboard.state.get().wallets;
-  
-  if (connectedWallets.length) {
-    await onboard.disconnectWallet({ label: connectedWallets[0].label });
+  try {
+    isConnecting.set(true);
+    
+    // Get currently connected wallet
+    const connectedWallets = onboard.state.get().wallets;
+    
+    // Disconnect wallet
+    if (connectedWallets.length > 0) {
+      await onboard.disconnectWallet({ label: connectedWallets[0].label });
+    }
+    
+    // Clear viem stores
+    walletAddress.set(undefined);
+    walletClient.set(undefined);
+    
+    // Clear stored connection
+    localStorage.removeItem(WALLET_CONNECT_KEY);
+  } catch (error) {
+    console.error('Failed to disconnect wallet:', error);
+    throw error;
+  } finally {
+    isConnecting.set(false);
   }
-  
-  // Clear viem stores
-  walletAddress.set(undefined);
-  walletClient.set(undefined);
-  
-  // Remove wallet connection from localStorage
-  localStorage.removeItem(WALLET_CONNECT_KEY);
 } 

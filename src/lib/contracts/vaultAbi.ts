@@ -23,6 +23,8 @@ export const vaultAbi = [
   {"type":"function","name":"withdraw","inputs":[{"name":"_token","type":"address","internalType":"contract IERC20"},{"name":"_amount","type":"uint256","internalType":"uint256"}],"outputs":[],"stateMutability":"nonpayable"},
   {"type":"event","name":"Initialized","inputs":[{"name":"version","type":"uint8","indexed":false,"internalType":"uint8"}],"anonymous":false},
   {"type":"event","name":"OwnershipTransferred","inputs":[{"name":"previousOwner","type":"address","indexed":true,"internalType":"address"},{"name":"newOwner","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},
+  {"type":"event","name":"VaultUpdated","inputs":[{"name":"vault","type":"address","indexed":true,"internalType":"address"},{"name":"amount","type":"uint256","indexed":false,"internalType":"uint256"},{"name":"timestamp","type":"uint256","indexed":false,"internalType":"uint256"}],"anonymous":false},
+  {"type":"event","name":"VaultLeft","inputs":[{"name":"vault","type":"address","indexed":true,"internalType":"address"}],"anonymous":false},
   {"type":"error","name":"StakeVault__InvalidDestinationAddress","inputs":[]},
   {"type":"error","name":"StakeVault__MigrationFailed","inputs":[]},
   {"type":"error","name":"StakeVault__NotAllowedToExit","inputs":[]},

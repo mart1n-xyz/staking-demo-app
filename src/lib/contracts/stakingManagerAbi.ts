@@ -34,15 +34,14 @@ export const stakingManagerAbi = [
       {
         components: [
           { internalType: 'uint256', name: 'stakedBalance', type: 'uint256' },
-          { internalType: 'uint256', name: 'rewardIndex', type: 'uint256' },
+          { internalType: 'uint256', name: 'lastRewardIndex', type: 'uint256' },
           { internalType: 'uint256', name: 'mpAccrued', type: 'uint256' },
           { internalType: 'uint256', name: 'maxMP', type: 'uint256' },
           { internalType: 'uint256', name: 'lastMPUpdateTime', type: 'uint256' },
           { internalType: 'uint256', name: 'lockUntil', type: 'uint256' },
-          { internalType: 'uint256', name: 'mpStaked', type: 'uint256' },
           { internalType: 'uint256', name: 'rewardsAccrued', type: 'uint256' }
         ],
-        internalType: 'struct RewardsStreamerMP.VaultData',
+        internalType: 'struct StakeManager.VaultData',
         name: '',
         type: 'tuple'
       }
@@ -66,7 +65,7 @@ export const stakingManagerAbi = [
   },
   {
     inputs: [{ internalType: 'address', name: 'vaultAddress', type: 'address' }],
-    name: 'compound',
+    name: 'updateVault',
     outputs: [],
     stateMutability: 'nonpayable',
     type: 'function'

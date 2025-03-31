@@ -2,16 +2,20 @@
 	import { fade, fly } from 'svelte/transition';
 	import type { Address } from 'viem';
 	import {
-		SNT_TOKEN,
 		vaultAccounts,
 		walletAddress,
 		walletClient,
 		publicClient,
 		refreshBalances
 	} from '$lib/viem';
+	import { SNT_TOKEN } from '$lib/config/contracts';
 	import { formatUnits, parseUnits, type Hash } from 'viem';
 	import { openExplorer } from '$lib/utils';
 	import { vaultAbi } from '$lib/contracts';
+	import TransactionModal from './TransactionModal.svelte';
+	import { onMount } from 'svelte';
+	import { browser } from '$app/environment';
+	import { openAddressExplorer } from '$lib/utils';
 
 	export let isOpen = false;
 	export let onClose: () => void;

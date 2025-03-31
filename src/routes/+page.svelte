@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { walletAddress, formattedBalance, formattedSntBalance, network, SNT_TOKEN, sntError, userVaults, formattedGlobalTotalStaked, fetchTotalStaked, fetchTokenPrice, tokenPriceUsd, globalTotalStaked, vaultAccounts, formattedTotalMpBalance, formattedStakedMpBalance, formattedTotalRewardsBalance, totalRewardsBalance, rewardsBalance, compoundMPs, vaultMpBalances, formattedUncompoundedMpTotal, refreshBalances } from '$lib/viem';
+	import { walletAddress, formattedBalance, formattedSntBalance, network, sntError, userVaults, formattedGlobalTotalStaked, fetchTotalStaked, fetchTokenPrice, tokenPriceUsd, globalTotalStaked, vaultAccounts, formattedTotalMpBalance, formattedStakedMpBalance, formattedTotalRewardsBalance, totalRewardsBalance, rewardsBalance, compoundMPs, vaultMpBalances, formattedUncompoundedMpTotal, refreshBalances } from '$lib/viem';
+	import { SNT_TOKEN } from '$lib/config/contracts';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { formatUnits } from 'viem';
@@ -339,8 +340,8 @@
 															: '0.00'} MPs
 													</span>
 													<span class="text-xs text-amber-700">
-														{$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpStaked || 0n)
-															? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpStaked || 0n))
+														{$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpAccrued || 0n)
+															? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpAccrued || 0n))
 															: '0.00'} MPs
 													</span>
 												</div>
@@ -385,10 +386,10 @@
 														class="rounded-full bg-blue-50 w-8 h-8 flex items-center justify-center text-blue-600 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-50"
 														disabled={compoundingVaults[vault] === 'loading' || 
 															!$vaultMpBalances[vault] || 
-															$vaultMpBalances[vault] <= ($vaultAccounts[vault]?.mpStaked || 0n)}
+															$vaultMpBalances[vault] <= ($vaultAccounts[vault]?.mpAccrued || 0n)}
 														aria-label="Compound MPs"
-														title="Compound {$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpStaked || 0n)
-															? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpStaked || 0n))
+														title="Compound {$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpAccrued || 0n)
+															? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpAccrued || 0n))
 															: '0.00'} MPs"
 													>
 														{#if compoundingVaults[vault] === 'loading'}
@@ -469,8 +470,8 @@
 														: '0.00'} MPs
 												</span>
 												<span class="text-xs text-amber-700">
-													Ready: {$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpStaked || 0n)
-														? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpStaked || 0n))
+													Ready: {$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpAccrued || 0n)
+														? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpAccrued || 0n))
 														: '0.00'} MPs
 												</span>
 											</div>
@@ -523,10 +524,10 @@
 													class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-50"
 													disabled={compoundingVaults[vault] === 'loading' || 
 														!$vaultMpBalances[vault] || 
-														$vaultMpBalances[vault] <= ($vaultAccounts[vault]?.mpStaked || 0n)}
+														$vaultMpBalances[vault] <= ($vaultAccounts[vault]?.mpAccrued || 0n)}
 													aria-label="Compound MPs"
-													title="Compound {$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpStaked || 0n)
-														? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpStaked || 0n))
+													title="Compound {$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpAccrued || 0n)
+														? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpAccrued || 0n))
 														: '0.00'} MPs"
 												>
 													{#if compoundingVaults[vault] === 'loading'}

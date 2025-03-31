@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { walletAddress, formattedSntBalance, SNT_TOKEN, userVaults, deployVault, VAULT_FACTORY, publicClient, vaultAccounts, sntBalance, stakeTokens, lockVault } from '$lib/viem';
+	import { walletAddress, formattedSntBalance, userVaults, deployVault, publicClient, vaultAccounts, sntBalance, stakeTokens, lockVault } from '$lib/viem';
+	import { SNT_TOKEN, VAULT_FACTORY } from '$lib/config/contracts';
 	import { decodeEventLog, formatUnits, parseUnits, type Address } from 'viem';
 	import TransactionModal from '$lib/components/TransactionModal.svelte';
 	import StakingModal from '$lib/components/StakingModal.svelte';

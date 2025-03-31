@@ -1,9 +1,13 @@
 <script lang="ts">
-	import { walletAddress, SNT_TOKEN, userVaults, vaultAccounts, rewardsBalance, formattedTotalRewardsBalance, compoundMPs, vaultMpBalances, formattedUncompoundedMpTotal, refreshBalances } from '$lib/viem';
-	import { formatUnits, type Address } from 'viem';
-	import UnstakingModal from '$lib/components/UnstakingModal.svelte';
+	import { walletAddress, userVaults, vaultAccounts, rewardsBalance, formattedTotalRewardsBalance, compoundMPs, vaultMpBalances, formattedUncompoundedMpTotal, refreshBalances } from '$lib/viem';
+	import { SNT_TOKEN } from '$lib/config/contracts';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
+	import { formatUnits } from 'viem';
+	import { onMount } from 'svelte';
+	import type { Address } from 'viem';
 	import { openAddressExplorer } from '$lib/utils';
+	import UnstakingModal from '$lib/components/UnstakingModal.svelte';
 
 	let isUnstakingModalOpen = false;
 	let selectedVaultAddress: Address | undefined;
@@ -409,8 +413,8 @@
 													: '0.00'} / 
 											</span>
 											<span class="text-amber-700 ml-1">
-												{$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpStaked || 0n)
-													? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpStaked || 0n))
+												{$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpAccrued || 0n)
+													? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpAccrued || 0n))
 													: '0.00'}
 											</span>
 										</div>
@@ -472,10 +476,10 @@
 												class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-50"
 												disabled={compoundingVaults[vault] === 'loading' || 
 													!$vaultMpBalances[vault] || 
-													$vaultMpBalances[vault] <= ($vaultAccounts[vault]?.mpStaked || 0n)}
+													$vaultMpBalances[vault] <= ($vaultAccounts[vault]?.mpAccrued || 0n)}
 												aria-label="Compound MPs"
-												title="Compound {$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpStaked || 0n)
-													? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpStaked || 0n))
+												title="Compound {$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpAccrued || 0n)
+													? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpAccrued || 0n))
 													: '0.00'} MPs"
 											>
 												{#if compoundingVaults[vault] === 'loading'}
@@ -650,8 +654,8 @@
 														: '0.00'} / 
 												</span>
 												<span class="text-amber-700 ml-1">
-													{$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpStaked || 0n)
-														? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpStaked || 0n))
+													{$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpAccrued || 0n)
+														? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpAccrued || 0n))
 														: '0.00'}
 												</span>
 											</div>
@@ -663,10 +667,10 @@
 											class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-50"
 											disabled={compoundingVaults[vault] === 'loading' || 
 												!$vaultMpBalances[vault] || 
-												$vaultMpBalances[vault] <= ($vaultAccounts[vault]?.mpStaked || 0n)}
+												$vaultMpBalances[vault] <= ($vaultAccounts[vault]?.mpAccrued || 0n)}
 											aria-label="Compound MPs"
-											title="Compound {$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpStaked || 0n)
-												? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpStaked || 0n))
+											title="Compound {$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpAccrued || 0n)
+												? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpAccrued || 0n))
 												: '0.00'} MPs"
 										>
 											{#if compoundingVaults[vault] === 'loading'}
@@ -765,10 +769,10 @@
 											class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-50"
 											disabled={compoundingVaults[vault] === 'loading' || 
 												!$vaultMpBalances[vault] || 
-												$vaultMpBalances[vault] <= ($vaultAccounts[vault]?.mpStaked || 0n)}
+												$vaultMpBalances[vault] <= ($vaultAccounts[vault]?.mpAccrued || 0n)}
 											aria-label="Compound MPs"
-											title="Compound {$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpStaked || 0n)
-												? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpStaked || 0n))
+											title="Compound {$vaultMpBalances[vault] > ($vaultAccounts[vault]?.mpAccrued || 0n)
+												? formatAmount($vaultMpBalances[vault] - ($vaultAccounts[vault]?.mpAccrued || 0n))
 												: '0.00'} MPs"
 										>
 											{#if compoundingVaults[vault] === 'loading'}

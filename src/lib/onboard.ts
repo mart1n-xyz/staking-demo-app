@@ -5,7 +5,12 @@ import coinbaseModule from '@web3-onboard/coinbase';
 import { sepolia } from 'viem/chains';
 
 // Initialize wallet modules
-const injected = injectedModule();
+const injected = injectedModule({
+  filter: {
+    // Only show MetaMask and Coinbase Wallet
+    [String((m: { label: string }) => m.label === 'MetaMask' || m.label === 'Coinbase Wallet')]: true
+  }
+});
 const walletConnect = walletConnectModule({
   projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || 'fdd52eb9a327dc5de49d31e8efde3022',
   dappUrl: 'https://staking-demo-app.netlify.app'

@@ -6,9 +6,9 @@
 		network,
 		formattedBalance,
 		formattedSntBalance,
-		SNT_TOKEN,
 		sntError
 	} from '$lib/viem';
+	import { SNT_TOKEN } from '$lib/config/contracts';
 	import { connectWithOnboard, disconnectWithOnboard, isConnecting, initializeWallet, isWalletInitialized } from '$lib/onboardToViem';
 	import { walletPreferences } from '$lib/stores/wallet';
 	import ChainSwitcher from './ChainSwitcher.svelte';

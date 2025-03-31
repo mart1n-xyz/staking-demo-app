@@ -1,4 +1,6 @@
-export const KARMA_NFT_ADDRESS = '0x1E9E85e91deF9a9aCf1d6F2888033180e4673d57' as const;
+import type { Address } from 'viem'
+
+export const KARMA_NFT_ADDRESS = '0xdE5592e1001f52380f9EDE01aa6725F469A8e46F' as const;
 
 export const karmaNftAbi = [
     {
@@ -282,14 +284,9 @@ export const karmaNftAbi = [
                 "type": "address"
             },
             {
-                "internalType": "address",
+                "internalType": "bool",
                 "name": "",
-                "type": "address"
-            },
-            {
-                "internalType": "uint256",
-                "name": "",
-                "type": "uint256"
+                "type": "bool"
             }
         ],
         "name": "setApprovalForAll",
