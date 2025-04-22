@@ -957,7 +957,7 @@ export async function compoundAllVaults() {
 		
 		return { hash, receipt };
 	} catch (error) {
-		console.error(`Failed to update account ${address}:`, error);
+		console.error(`Failed to update account ${get(walletAddress)}:`, error);
 		throw error;
 	}
 }
