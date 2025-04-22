@@ -354,86 +354,44 @@ export async function refreshBalances(address: Address) {
 
 // Function to connect wallet
 export async function connectWallet() {
-	if (!window.ethereum) {
-		throw new Error('MetaMask not installed');
-	}
-
 	try {
-		// First, try to add or switch to the Status Network Testnet
-		try {
-			await window.ethereum.request({
-				method: 'wallet_switchEthereumChain',
-				params: [{ chainId: `0x${statusNetworkTestnet.id.toString(16)}` }]
-			});
-		} catch (switchError: any) {
-			// This error code indicates that the chain has not been added to MetaMask
-			if (switchError.code === 4902) {
-				await window.ethereum.request({
-					method: 'wallet_addEthereumChain',
-					params: [
-						{
-							chainId: `0x${statusNetworkTestnet.id.toString(16)}`,
-							chainName: statusNetworkTestnet.name,
-							nativeCurrency: statusNetworkTestnet.nativeCurrency,
-							rpcUrls: [statusNetworkTestnet.rpcUrls.default.http[0]],
-							blockExplorerUrls: [statusNetworkTestnet.blockExplorers?.default.url]
-						}
-					]
-				});
-			} else {
-				console.warn('Failed to switch to Status Network Testnet:', switchError);
-				// Continue anyway, as we'll use the Status Network contracts regardless
-			}
+		if (typeof window === 'undefined' || !window.ethereum) {
+			throw new Error('No Ethereum provider found');
 		}
-
-		const accounts = (await window.ethereum.request({
-			method: 'eth_requestAccounts'
-		})) as string[];
-
-		const address = accounts[0] as Address;
-		console.log('Connected to address:', address);
-		console.log('Using Status Network Testnet');
 
 		const client = createWalletClient({
 			chain: statusNetworkTestnet,
 			transport: custom(window.ethereum)
 		});
 
-		walletAddress.set(address);
+		const [address] = await client.requestAddresses();
 		walletClient.set(client);
+		walletAddress.set(address);
 
-		// Fetch initial balances and vaults
-		await refreshBalances(address);
-
-		// Listen for account changes
-		window.ethereum.on('accountsChanged', async (newAccounts: string[]) => {
-			if (newAccounts.length === 0) {
+		// Set up event listeners
+		window.ethereum.on('accountsChanged', (accounts: string[]) => {
+			if (accounts.length === 0) {
 				disconnectWallet();
 			} else {
-				const newAddress = newAccounts[0] as Address;
-				walletAddress.set(newAddress);
-				await refreshBalances(newAddress);
+				walletAddress.set(accounts[0] as Address);
 			}
 		});
 
-		return { address, client };
+		window.ethereum.on('chainChanged', () => {
+			window.location.reload();
+		});
+
+		return address;
 	} catch (error) {
-		console.error('Error connecting wallet:', error);
+		console.error('Failed to connect wallet:', error);
 		throw error;
 	}
 }
 
 // Function to disconnect wallet
 export function disconnectWallet() {
-	if (window.ethereum) {
-		window.ethereum.removeListener('accountsChanged', () => {});
-	}
 	walletAddress.set(undefined);
 	walletClient.set(undefined);
-	walletBalance.set(undefined);
-	sntBalance.set(undefined);
-	sntError.set(undefined);
-	userVaults.set([]);
 }
 
 // Function to deploy a new vault
