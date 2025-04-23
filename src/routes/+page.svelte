@@ -98,6 +98,38 @@
 		}
 	}
 	
+	// Function to add Status Network to wallet
+	async function addStatusNetwork() {
+		const client = get(walletClient);
+		if (!client) return;
+		
+		try {
+			if (typeof window === 'undefined' || !window.ethereum) {
+				throw new Error('No Ethereum provider found');
+			}
+			
+			await window.ethereum.request({
+				method: 'wallet_addEthereumChain',
+				params: [{
+					chainId: '0x' + statusNetworkTestnet.id.toString(16),
+					chainName: 'Status Network Sepolia',
+					nativeCurrency: {
+						name: 'ETH',
+						symbol: 'ETH',
+						decimals: 18
+					},
+					rpcUrls: ['https://public.sepolia.rpc.status.network'],
+					blockExplorerUrls: ['https://sepoliascan.status.network']
+				}]
+			});
+			// After adding, try to switch to it
+			await switchNetwork();
+		} catch (error) {
+			console.error('Failed to add Status Network:', error);
+			drinkError = 'Failed to add Status Network. Please add it manually.';
+		}
+	}
+	
 	// Function to fetch current shot count
 	async function fetchShotCount() {
 		if (!$walletAddress) return;
@@ -185,12 +217,20 @@
 				{#if isWrongNetwork}
 					<div class="text-center py-4">
 						<p class="mb-4 text-black font-bold">Please switch to Status Network</p>
-						<button 
-							on:click={switchNetwork}
-							class="px-6 py-3 bg-[#000080] text-white font-bold rounded shadow-[2px_2px_0_#000000] hover:bg-[#0000a0] transition-colors"
-						>
-							Switch Network
-						</button>
+						<div class="flex flex-col sm:flex-row gap-4 justify-center">
+							<button 
+								on:click={switchNetwork}
+								class="px-6 py-3 bg-[#000080] text-white font-bold rounded shadow-[2px_2px_0_#000000] hover:bg-[#0000a0] transition-colors"
+							>
+								Switch Network
+							</button>
+							<button 
+								on:click={addStatusNetwork}
+								class="px-6 py-3 bg-[#008000] text-white font-bold rounded shadow-[2px_2px_0_#000000] hover:bg-[#00a000] transition-colors"
+							>
+								Add Status Network
+							</button>
+						</div>
 					</div>
 				{:else}
 					<div class="text-center mb-4">
