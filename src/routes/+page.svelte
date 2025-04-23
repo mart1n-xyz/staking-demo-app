@@ -139,8 +139,7 @@
 				account: address,
 				address: RAKIA_CONTRACT,
 				abi: rakiaAbi,
-				functionName: 'drinkRakia',
-				gas: 0n
+				functionName: 'drinkRakia'
 			});
 			
 			// Wait for transaction to be mined
