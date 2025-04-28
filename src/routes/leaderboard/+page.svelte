@@ -5,7 +5,7 @@
 	import { writable } from 'svelte/store';
 
 	// Contract address and ABI
-	const RAKIA_CONTRACT = '0xf78BD2c08120727370b603Db4c535fe142a6a7B9' as const;
+	const RAKIA_CONTRACT = '0xD2De054722b2D2b8c7614D6486a94e87B3416908' as const;
 	const rakiaAbi = [
 		{
 			"inputs": [],
