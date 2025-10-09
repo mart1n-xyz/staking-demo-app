@@ -93,6 +93,7 @@ export const userVaults = writable<Address[]>([]);
 export const vaultAccounts = writable<Record<Address, Account>>({});
 export const rewardsBalance = writable<Record<Address, bigint>>({});
 export const totalRewardsBalance = writable<bigint>(0n);
+export const karmaErc20Balance = writable<bigint>(0n);
 export const totalMpAccountBalance = writable<bigint>(0n);
 export const vaultMpBalances = writable<Record<Address, bigint>>({});
 export const uncompoundedMpTotal = writable<bigint>(0n);
@@ -142,6 +143,35 @@ export const formattedUncompoundedMpTotal = derived(uncompoundedMpTotal, ($total
 });
 
 export const formattedTotalRewardsBalance = derived(totalRewardsBalance, ($total) => {
+	if ($total === undefined) return '0.00';
+	const num = Number(formatUnits($total, 18));
+	return formatNumberWithSpaces(num);
+});
+
+// Claimed ERC20 balance (ERC20 balance minus unclaimed StakeManager balance)
+export const claimedKarmaBalance = derived(
+	[karmaErc20Balance, totalRewardsBalance],
+	([$erc20Balance, $smBalance]) => {
+		const claimed = $erc20Balance - $smBalance;
+		return claimed > 0n ? claimed : 0n;
+	}
+);
+
+export const formattedKarmaErc20Balance = derived(claimedKarmaBalance, ($balance) => {
+	if ($balance === undefined) return '0.00';
+	const num = Number(formatUnits($balance, 18));
+	return formatNumberWithSpaces(num);
+});
+
+// Combined karma balance (StakeManager + Claimed ERC20)
+export const totalKarmaBalance = derived(
+	[totalRewardsBalance, claimedKarmaBalance],
+	([$smBalance, $claimedBalance]) => {
+		return $smBalance + $claimedBalance;
+	}
+);
+
+export const formattedTotalKarmaBalance = derived(totalKarmaBalance, ($total) => {
 	if ($total === undefined) return '0.00';
 	const num = Number(formatUnits($total, 18));
 	return formatNumberWithSpaces(num);
@@ -337,6 +367,7 @@ export async function refreshBalances(address: Address) {
 			fetchSntBalance(address),
 			fetchTotalStaked(),
 			fetchTotalRewardsBalance(address),
+			fetchKarmaErc20Balance(address),
 			fetchAllVaultRewardsBalances(vaults),
 			mpBalanceOfAccount(address),
 			fetchAllVaultMpBalances(vaults)
@@ -348,8 +379,9 @@ export async function refreshBalances(address: Address) {
 							  index === 1 ? 'STT balance' : 
 							  index === 2 ? 'Total staked' : 
 							  index === 3 ? 'Total rewards' :
-							  index === 4 ? 'Vault rewards' :
-							  index === 5 ? 'Total MP balance' :
+							  index === 4 ? 'ERC20 karma balance' :
+							  index === 5 ? 'Vault rewards' :
+							  index === 6 ? 'Total MP balance' :
 							  'Vault MP balances';
 							  
 			if (result.status === 'fulfilled') {
@@ -638,6 +670,36 @@ function formatNumberWithSpaces(num: number): string {
 	return parts.join('.');
 }
 
+// Helper function to format karma rewards with appropriate units
+export function formatKarmaAmount(amount: bigint): string {
+	// Convert to string to avoid precision loss for very small numbers
+	const amountStr = amount.toString();
+	
+	// If amount is 0, return 0.00
+	if (amount === 0n) {
+		return '0.00';
+	}
+	
+	// Define thresholds in wei
+	const oneKarma = BigInt('1000000000000000000'); // 1e18 wei = 1 KARMA
+	const oneGwei = BigInt('1000000000'); // 1e9 wei = 1 gwei
+	
+	// If amount is >= 0.01 KARMA (1e16 wei), show in KARMA with decimals
+	if (amount >= oneKarma / 100n) {
+		const num = Number(formatUnits(amount, 18));
+		return formatNumberWithSpaces(num);
+	}
+	// If amount is >= 1 gwei, show in gwei
+	else if (amount >= oneGwei) {
+		const gweiAmount = Number(formatUnits(amount, 9));
+		return `${Math.floor(gweiAmount)} gwei`;
+	}
+	// Otherwise show in wei
+	else {
+		return `${amountStr} wei`;
+	}
+}
+
 // Initial fetch of total staked
 fetchTotalStaked();
 
@@ -860,6 +922,36 @@ export async function fetchTotalRewardsBalance(address: Address) {
 	}
 }
 
+// Function to fetch ERC20 karma balance for a user
+export async function fetchKarmaErc20Balance(address: Address) {
+	const karmaAddress = KARMA.address;
+	
+	try {
+		console.log(`Fetching ERC20 karma balance for user: ${address}`);
+		console.log(`Using Karma contract address: ${karmaAddress}`);
+		
+		const balance = await publicClient.readContract({
+			address: karmaAddress,
+			abi: KARMA.abi,
+			functionName: 'balanceOf',
+			args: [address]
+		}) as bigint;
+		
+		console.log(`Received ERC20 karma balance for user ${address}: ${balance.toString()}`);
+		karmaErc20Balance.set(balance);
+		return balance;
+	} catch (error) {
+		console.error(`Failed to fetch ERC20 karma balance for user ${address}:`, error);
+		console.error('Error details:', {
+			chain: get(currentChain),
+			karmaAddress,
+			publicClient: publicClient ? 'Initialized' : 'Not initialized'
+		});
+		karmaErc20Balance.set(0n);
+		return 0n;
+	}
+}
+
 // Function to fetch rewards balance for all vaults
 export async function fetchAllVaultRewardsBalances(vaults: readonly Address[]) {
 	console.log(`Fetching rewards balance for ${vaults.length} vaults`);
@@ -973,6 +1065,42 @@ export async function compoundAllVaults() {
 		return { hash, receipt };
 	} catch (error) {
 		console.error(`Failed to update account ${address}:`, error);
+		throw error;
+	}
+}
+
+// Function to redeem rewards for an account
+export async function redeemRewards() {
+	try {
+		const client = get(walletClient);
+		const address = get(walletAddress);
+		const chain = get(currentChain);
+		
+		if (!client || !address) {
+			throw new Error('Wallet not connected');
+		}
+		
+		console.log(`Redeeming rewards for account: ${address} on chain: ${chain.name} (${chain.id})`);
+		
+		// Call redeemRewards on the staking manager with the account address as an argument
+		const hash = await client.writeContract({
+			chain: statusNetworkTestnet, // Use Status Network Testnet explicitly
+			account: address,
+			address: STAKING_MANAGER.address,
+			abi: stakingManagerAbi,
+			functionName: 'redeemRewards',
+			args: [address]
+		});
+		
+		console.log('Redeem rewards transaction hash:', hash);
+		
+		// Wait for transaction to be mined
+		const receipt = await publicClient.waitForTransactionReceipt({ hash });
+		console.log('Redeem rewards receipt:', receipt);
+		
+		return { hash, receipt };
+	} catch (error) {
+		console.error(`Failed to redeem rewards for account ${address}:`, error);
 		throw error;
 	}
 }

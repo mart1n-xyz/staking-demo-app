@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { walletAddress, formattedBalance, formattedSntBalance, network, sntError, userVaults, formattedGlobalTotalStaked, fetchTotalStaked, fetchTokenPrice, tokenPriceUsd, globalTotalStaked, vaultAccounts, formattedTotalMpBalance, formattedStakedMpBalance, formattedTotalRewardsBalance, totalRewardsBalance, rewardsBalance, compoundMPs, compoundAllVaults, vaultMpBalances, formattedUncompoundedMpTotal, refreshBalances, totalMpAccountBalance } from '$lib/viem';
+	import { walletAddress, formattedBalance, formattedSntBalance, network, sntError, userVaults, formattedGlobalTotalStaked, fetchTotalStaked, fetchTokenPrice, tokenPriceUsd, globalTotalStaked, vaultAccounts, formattedTotalMpBalance, formattedStakedMpBalance, formattedTotalRewardsBalance, formattedTotalKarmaBalance, formattedKarmaErc20Balance, totalRewardsBalance, karmaErc20Balance, rewardsBalance, compoundMPs, compoundAllVaults, redeemRewards, vaultMpBalances, formattedUncompoundedMpTotal, refreshBalances, totalMpAccountBalance, formatKarmaAmount } from '$lib/viem';
 	import { SNT_TOKEN } from '$lib/config/contracts';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -55,6 +55,12 @@
 	
 	// Track compound all transaction state
 	let compoundingAll: 'idle' | 'loading' | 'success' = 'idle';
+	
+	// Track redeem rewards transaction state
+	let redeemingRewards: 'idle' | 'loading' | 'success' = 'idle';
+	
+	// Track karma breakdown visibility
+	let showKarmaBreakdown = false;
 	
 	// Initialize compounding state for all vaults
 	$: {
@@ -129,8 +135,7 @@
 	}
 
 	function formatRewardsAmount(amount: bigint): string {
-		const num = Number(formatUnits(amount, 18));
-		return formatNumberWithSpaces(num);
+		return formatKarmaAmount(amount);
 	}
 
 	// Helper function to format numbers with spaces as thousand separators
@@ -245,6 +250,34 @@
 			console.error("Error compounding all vaults:", error);
 			// Reset to idle state on error
 			compoundingAll = 'idle';
+		}
+	}
+
+	// Function to handle redeeming rewards
+	async function handleRedeemRewards() {
+		try {
+			// Set loading state
+			redeemingRewards = 'loading';
+			
+			// Trigger redeem rewards transaction
+			await redeemRewards();
+			
+			// Set success state
+			redeemingRewards = 'success';
+			
+			// Refresh balances to update UI
+			if ($walletAddress) {
+				await refreshBalances($walletAddress);
+			}
+			
+			// Reset to idle after 3 seconds
+			setTimeout(() => {
+				redeemingRewards = 'idle';
+			}, 3000);
+		} catch (error) {
+			console.error("Error redeeming rewards:", error);
+			// Reset to idle state on error
+			redeemingRewards = 'idle';
 		}
 	}
 
@@ -380,13 +413,65 @@
 				
 				<div class="overflow-hidden rounded-xl bg-blue-50 p-6 shadow-sm">
 					<div class="flex flex-col">
-						<h3 class="text-sm font-medium leading-6 text-blue-700">Your Karma Rewards</h3>
+						<div class="flex items-center justify-between">
+							<h3 class="text-sm font-medium leading-6 text-blue-700">Your Karma Rewards</h3>
+							<div class="flex items-center gap-2">
+								<button
+									on:click={handleRedeemRewards}
+									class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-blue-100"
+									disabled={redeemingRewards === 'loading' || $totalRewardsBalance === 0n}
+									aria-label="Redeem SM balance"
+									title="Redeem SM Balance"
+								>
+									{#if redeemingRewards === 'loading'}
+										<!-- Loading spinner -->
+										<svg class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+											<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+											<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+										</svg>
+									{:else if redeemingRewards === 'success'}
+										<!-- Success checkmark -->
+										<svg class="h-4 w-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+											<path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+										</svg>
+									{:else}
+										<!-- Arrow down icon -->
+										<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+											<path stroke-linecap="round" stroke-linejoin="round" d="M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3" />
+										</svg>
+									{/if}
+								</button>
+								<button
+									on:click={() => showKarmaBreakdown = !showKarmaBreakdown}
+									class="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-700 hover:bg-blue-200 transition-colors"
+									aria-label="Toggle karma breakdown"
+									title="Show Karma breakdown"
+								>
+									<svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+										<path stroke-linecap="round" stroke-linejoin="round" d="M3 7h18M3 12h18M3 17h18" />
+									</svg>
+								</button>
+							</div>
+						</div>
 						<div class="mt-4 flex items-baseline justify-end gap-x-2">
 							<span class="text-4xl font-bold tracking-tight text-blue-900">
-								{$formattedTotalRewardsBalance}
+								{$formattedTotalKarmaBalance}
 							</span>
 							<span class="text-sm font-semibold leading-6 text-blue-700">KARMA</span>
 						</div>
+						
+						{#if showKarmaBreakdown}
+							<div class="mt-4 space-y-2 border-t border-blue-200 pt-3">
+								<div class="flex justify-between text-xs">
+									<span class="text-blue-600">StakeManager Balance:</span>
+									<span class="font-medium text-blue-800">{$formattedTotalRewardsBalance}</span>
+								</div>
+								<div class="flex justify-between text-xs">
+									<span class="text-blue-600">ERC20 Balance:</span>
+									<span class="font-medium text-blue-800">{$formattedKarmaErc20Balance}</span>
+								</div>
+							</div>
+						{/if}
 					</div>
 				</div>
 			</div>
@@ -479,6 +564,9 @@
 											</td>
 											<td class="whitespace-nowrap px-6 py-4 text-right text-sm font-bold text-blue-900">
 												{$rewardsBalance[vault] ? formatRewardsAmount($rewardsBalance[vault]) : '0.00'}
+												{#if $rewardsBalance[vault] && $rewardsBalance[vault] >= BigInt('10000000000000000')}
+													<span class="text-xs font-normal text-gray-500 ml-1">KARMA</span>
+												{/if}
 											</td>
 											<td class="relative whitespace-nowrap py-4 pl-3 pr-4 text-right text-sm font-medium sm:pr-6">
 												<div class="flex items-center justify-end gap-2">
@@ -620,6 +708,9 @@
 											<span class="text-sm text-gray-500">Karma Rewards</span>
 											<span class="text-sm font-bold text-blue-900">
 												{$rewardsBalance[vault] ? formatRewardsAmount($rewardsBalance[vault]) : '0.00'}
+												{#if $rewardsBalance[vault] && $rewardsBalance[vault] >= BigInt('10000000000000000')}
+													<span class="text-xs font-normal text-gray-500 ml-1">KARMA</span>
+												{/if}
 											</span>
 										</div>
 									</div>
